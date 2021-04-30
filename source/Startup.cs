@@ -1,3 +1,4 @@
+using HealthChecks.UI.Client;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Hosting;
@@ -30,6 +31,9 @@ namespace Health_Checks_API
 			});
 
 			services.AddHealthChecks();
+
+			services.AddHealthChecksUI()
+					.AddInMemoryStorage();
 		}
 
 		public void Configure(IApplicationBuilder application, IWebHostEnvironment environment)
@@ -58,6 +62,17 @@ namespace Health_Checks_API
 								await context.Response.WriteAsync(result);
 							}
 						});
+
+			application.UseHealthChecks("/healthchecks-data-ui", new HealthCheckOptions()
+			{
+				Predicate = _ => true,
+				ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
+			});
+			
+			application.UseHealthChecksUI(options =>
+			{
+				options.UIPath = "/monitor";
+			});
 
 			application.UseHttpsRedirection();
 			application.UseRouting();
