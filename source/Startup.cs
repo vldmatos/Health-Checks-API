@@ -1,9 +1,14 @@
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.OpenApi.Models;
+using System;
+using System.Net.Mime;
+using System.Text.Json;
 
 namespace Health_Checks_API
 {
@@ -18,12 +23,13 @@ namespace Health_Checks_API
 
 		public void ConfigureServices(IServiceCollection services)
 		{
-
 			services.AddControllers();
 			services.AddSwaggerGen(swagger =>
 			{
 				swagger.SwaggerDoc("v1", new OpenApiInfo { Title = "Health_Checks_API", Version = "v1" });
 			});
+
+			services.AddHealthChecks();
 		}
 
 		public void Configure(IApplicationBuilder application, IWebHostEnvironment environment)
@@ -34,7 +40,25 @@ namespace Health_Checks_API
 				application.UseSwagger();
 				application.UseSwaggerUI(swagger => swagger.SwaggerEndpoint("/swagger/v1/swagger.json", "Health-Checks-API v1"));
 			}
-			
+
+			application.UseHealthChecks("/status-text");
+			application.UseHealthChecks("/status-json",
+						new HealthCheckOptions()
+						{
+							ResponseWriter = async (context, report) =>
+							{
+								var result = JsonSerializer.Serialize(
+									new
+									{
+										time = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+										status = report.Status.ToString(),
+									});
+
+								context.Response.ContentType = MediaTypeNames.Application.Json;
+								await context.Response.WriteAsync(result);
+							}
+						});
+
 			application.UseHttpsRedirection();
 			application.UseRouting();
 			application.UseAuthorization();
