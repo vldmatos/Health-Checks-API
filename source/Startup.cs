@@ -1,3 +1,4 @@
+using Health_Checks_API.Extensions;
 using HealthChecks.UI.Client;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
@@ -30,8 +31,7 @@ namespace Health_Checks_API
 				swagger.SwaggerDoc("v1", new OpenApiInfo { Title = "Health_Checks_API", Version = "v1" });
 			});
 
-			services.AddHealthChecks();
-
+			services.AddHealthChecks();			
 			services.AddHealthChecksUI()
 					.AddInMemoryStorage();
 		}
@@ -45,34 +45,10 @@ namespace Health_Checks_API
 				application.UseSwaggerUI(swagger => swagger.SwaggerEndpoint("/swagger/v1/swagger.json", "Health-Checks-API v1"));
 			}
 
-			application.UseHealthChecks("/status-text");
-			application.UseHealthChecks("/status-json",
-						new HealthCheckOptions()
-						{
-							ResponseWriter = async (context, report) =>
-							{
-								var result = JsonSerializer.Serialize(
-									new
-									{
-										time = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
-										status = report.Status.ToString(),
-									});
-
-								context.Response.ContentType = MediaTypeNames.Application.Json;
-								await context.Response.WriteAsync(result);
-							}
-						});
-
-			application.UseHealthChecks("/healthchecks-data-ui", new HealthCheckOptions()
-			{
-				Predicate = _ => true,
-				ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
-			});
-			
-			application.UseHealthChecksUI(options =>
-			{
-				options.UIPath = "/monitor";
-			});
+			application.UseHealthChecks(HealthChecksExtensions.TextCheckRouteAPI);
+			application.UseHealthChecks(HealthChecksExtensions.JsonCheckRouteAPI, HealthChecksExtensions.Options());
+			application.UseHealthChecks(HealthChecksExtensions.DataUIPath, HealthChecksExtensions.UIOptions());			
+			application.UseHealthChecksUI(options => { options.UIPath = HealthChecksExtensions.UIPath; });
 
 			application.UseHttpsRedirection();
 			application.UseRouting();
